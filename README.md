@@ -91,7 +91,7 @@ NEW EXAMPLES 3N1 calc
 =====================
 The 3n1 calc test:
 Check if a number is even: if it is even then divide by two, if it is odd then multiply by three
-and add one. Every start numbeer should give a one as the final result!
+and add one. Every start number should give a one as the final result!
 
 Run the "l1vm-data" database server:
 
