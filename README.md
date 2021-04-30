@@ -3,9 +3,6 @@ L1VM DATA
 
 This software is copyrighted by Stefan Pietzonke aka koder77 2021.
 
-This is the DEMO version of l1vm-data.
-You are limited to max 200 objects in the database!
-
 You need to install the "libssl-dev" package on Debian WSL.
 
 L1vm-data is a simple database for sharing data stored in the l1vm-data server.
