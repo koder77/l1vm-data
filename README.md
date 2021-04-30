@@ -46,20 +46,17 @@ To read and remove a variable use the REMOVE command.
 The commands list:
 
 <pre>
-STORE INT64       store variables
-STORE BYTE
+STORE BYTE        store variables
 STORE STRING
 STORE INT64
 STORE DOUBLE
 
-GET INT64         get(read) variables
-GET BYTE
+GET BYTE         get(read) variables
 GET STRING
 GET INT64
 GET DOUBLE
 
-REMOVE INT64      remove (read and remove) variables
-REMOVE BYTE
+REMOVE BYTE      remove (read and remove) variables
 REMOVE STRING
 REMOVE INT64
 REMOVE DOUBLE
