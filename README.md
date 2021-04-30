@@ -3,8 +3,6 @@ L1VM DATA
 
 This software is copyrighted by Stefan Pietzonke aka koder77 2021.
 
-You need to install the "libssl-dev" package on Debian WSL.
-
 L1vm-data is a simple database for sharing data stored in the l1vm-data server.
 Worker programs can access this data and share it as global memory.
 There are three commands:
