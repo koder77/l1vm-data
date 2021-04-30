@@ -68,7 +68,7 @@ REMOVE DOUBLE
 The GET/REMOVE commands also are working with "regular expressions":
 
 <pre>
-GET int64
+GET INT64
 foobar.*
 42
 OK
