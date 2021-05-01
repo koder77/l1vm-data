@@ -1,4 +1,5 @@
 L1VM data - 1.0.3
 Initial commit.
+ADDED missing "include/global-c.h" header file.
 
--- Stefan Pietzonke <jay-t@gmx.net> Fri Apr 30 2021 18:53 +0200
+-- Stefan Pietzonke <jay-t@gmx.net> Sat May 01 2021 15:22 +0200
