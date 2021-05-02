@@ -1,5 +1,5 @@
 /*
- * This file global.h is part of l1vm-data.
+ * This file protos.h is part of l1vm-data.
  *
  * (c) Copyright Stefan Pietzonke (jay-t@gmx.net), 2021
  *
