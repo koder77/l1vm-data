@@ -1,7 +1,26 @@
-// main.cpp
+/*
+ * This file main.cpp is part of l1vm-data.
+ *
+ * (c) Copyright Stefan Pietzonke (jay-t@gmx.net), 2021
+ *
+ * L1vm is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * L1vm is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with L1vm.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 //
 // to connect manualy to data bank:
 // nc localhost 2020
+//
 
 #include "include/global.h"
 #include "include/protos.h"
