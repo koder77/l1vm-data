@@ -36,7 +36,7 @@
 #include <float.h>
 
 // crypto stuff
-#include <openssl/sha.h>
+// #include <openssl/sha.h>
 
 #define MACHINE_BIG_ENDIAN 0
 
@@ -1593,19 +1593,31 @@ int main (int ac, char *av[])
     cout << "l1vm-data -s <size> -p <port>" << endl;
     cout << "open source version" << endl;
 
+    // cout << "ac: " << ac << endl;
+
     if (ac > 1)
     {
         for (i = 1; i < ac; i++)
         {
             if (strcmp (av[i], "-s") == 0)
             {
-                size = atoi (av[i + 1]);
-                cout << "size: " << size << endl;
+                // cout << "-s i: " << i << endl;
+
+                if (i < ac - 1)
+                {
+                    size = atoi (av[i + 1]);
+                    cout << "size: " << size << endl;
+                }
             }
             if (strcmp (av[i], "-p") == 0)
             {
-                port = atoi (av[i + 1]);
-                cout << "port: " << port << endl;
+                // cout << "-p: i: " << i << endl;
+
+                if (i < ac - 1)
+                {
+                    port = atoi (av[i + 1]);
+                    cout << "port: " << port << endl;
+                }
             }
         }
     }
