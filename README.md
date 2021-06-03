@@ -1,5 +1,5 @@
-L1VM DATA
-=========
+L1VM DATA - 2021-06-03
+======================
 
 This software is copyrighted by Stefan Pietzonke aka koder77 2021.
 
@@ -58,6 +58,9 @@ REMOVE BYTE      remove (read and remove) variables
 REMOVE STRING
 REMOVE INT64
 REMOVE DOUBLE
+
+GET INFO         get variable real name and data type
+LOGOUT           disconnect from server
 </pre>
 
 The GET/REMOVE commands also are working with "regular expressions":
@@ -114,5 +117,19 @@ GET INT64
 3n1-100
 1
 </pre>
+
+Get info of variable:
+
+<pre>
+$ nc localhost 2020
+GET INFO
+3n1-.*
+3n1-1
+INT64
+OK
+</pre>
+
+So the "GET INFO" and "3n1-.*" was used as input to the database.
+And the following lines are the output.
 
 Have some fun!! :)
