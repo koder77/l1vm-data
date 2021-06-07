@@ -147,6 +147,6 @@ test.l1db
 OK
 </pre>
 
-To save/load a data base you use two input line for the commands  as above!
+To save/load a data base you use two input lines for the commands as above!
 
 Have some fun!! :)
