@@ -34,6 +34,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <float.h>
+#include <bits/stdc++.h>
 
 // crypto stuff
 // #include <openssl/sha.h>
@@ -85,6 +86,10 @@ static struct socket sockets[MAXSOCKETSCONN];
 extern pthread_mutex_t data_mutex;
 
 size_t strlen_safe (const char * str, int maxlen);
+
+// global data set by main and load_database
+S8 size = 200;
+S8 port = 2020;
 
 //byte order =================================================================
 // helper functions endianess
@@ -456,9 +461,15 @@ public:
 	S2 remove_double (U1 *name, F8 &value);
 	S2 remove_all (void);
 
+    // data base save/load
+    S2 save_database (U1 *filename);
+    S2 load_database (U1 *filename);
+
     // data info
     S2 data_get_info (U1 *name, U1 *realname, S8 &type);
     S2 find_element_realname (U1 *name, S8 &type, U1 *realname);
+
+    S2 data_get_input_line (U1 *line, U1 *input, S2 type);
 
     data_store (S8 max_size, S8 port)
     {
@@ -980,6 +991,328 @@ S2 data_store::remove_all (void)
 	return (0);
 }
 
+
+// save/load database =========================================================
+
+S2 data_store::save_database (U1 *filename)
+{
+    S8 i;
+    ofstream file;
+    file.open ((const char *) filename, ios::out);
+    if (file.is_open ())
+    {
+        file.precision (200);
+        file << "l1vm-data database" << endl;
+        if (! file.good())
+        {
+            file.close ();
+            return (1);
+        }
+        file << "maxdata: " << maxdata << endl;
+        if (! file.good())
+        {
+            file.close ();
+            return (1);
+        }
+        cout << "save_database: maxdata: " << maxdata << endl;
+        for (i = 0; i < maxdata; i++)
+        {
+            if (data[i].type != FREE)
+            {
+                // save data name
+                file << "dataname: " << data[i].name << endl;
+                if (! file.good())
+                {
+                    file.close ();
+                    return (1);
+                }
+
+                switch (data[i].type)
+                {
+                    case BYTE:
+                        file << "datatype: BYTE" << endl;
+                        if (! file.good())
+                        {
+                            file.close ();
+                            return (1);
+                        }
+
+                        file << "datasize: 1" << endl;
+                        if (! file.good())
+                        {
+                            file.close ();
+                            return (1);
+                        }
+                        file << "data: " << data[i].mem.byte << endl;
+                        if (! file.good())
+                        {
+                            file.close ();
+                            return (1);
+                        }
+                        break;
+
+                    case STRING:
+                        file << "datatype: STRING" << endl;
+                        if (! file.good())
+                        {
+                            file.close ();
+                            return (1);
+                        }
+
+                        file << "datasize: " << data[i].size << endl;
+                        if (! file.good())
+                        {
+                            file.close ();
+                            return (1);
+                        }
+                        file << "data: " << data[i].mem.byte << endl;
+                        if (! file.good())
+                        {
+                            file.close ();
+                            return (1);
+                        }
+                        break;
+
+                    case QWORD:
+                        file << "datatype: INT64" << endl;
+                        if (! file.good())
+                        {
+                            file.close ();
+                            return (1);
+                        }
+
+                        file << "datasize: " << data[i].size << endl;
+                        if (! file.good())
+                        {
+                            file.close ();
+                            return (1);
+                        }
+                        file << "data: " << data[i].mem.qword << endl;
+                        if (! file.good())
+                        {
+                            file.close ();
+                            return (1);
+                        }
+                        break;
+
+                    case DOUBLE:
+                        file << "datatype: DOUBLE" << endl;
+                        if (! file.good())
+                        {
+                            file.close ();
+                            return (1);
+                        }
+
+                        file << "datasize: " << data[i].size << endl;
+                        if (! file.good())
+                        {
+                            file.close ();
+                            return (1);
+                        }
+                        file << "data: " << data[i].mem.dfloat << endl;
+                        if (! file.good())
+                        {
+                            file.close ();
+                            return (1);
+                        }
+                        break;
+                }
+                // end of entry, write newline
+                file << endl;
+                if (! file.good())
+                {
+                    file.close ();
+                    return (1);
+                }
+            }
+        }
+        file.close ();
+        return (0);
+    }
+    else
+    {
+        // error file open
+        cout << "save_database: ERROR can't save data base file: " << filename << endl;
+        return (1);
+    }
+}
+
+S2 data_store::load_database (U1 *filename)
+{
+    S8 maxdata_new;
+    size_t pos;
+    string buf;
+    string command;
+    string datav;   // read data
+    fstream file;
+    U1 read = 1;
+    S2 data_type;
+    string data_name;
+    S8 data_size;
+    S8 i = 0;
+
+    file.open ((const char *) filename, ios::in);
+    if (file.is_open ())
+    {
+        // check data base header
+        getline (file, buf);
+        if (! file.good ())
+        {
+            read = 0;
+        }
+        pos = buf.find ("l1vm-data database");
+        if (pos == std::string::npos)
+        {
+            // header not found: ERROR
+            cout << "load_database: ERROR can't open data base!" << endl;
+            file.close ();
+            return (1);
+        }
+        // read max data
+        getline (file, buf);
+        if (! file.good ())
+        {
+            read = 0;
+        }
+        pos = buf.find ("maxdata: ");
+        if (pos == std::string::npos)
+        {
+            // max data not found: ERROR
+            cout << "load_database: ERROR can't read maxdata!" << endl;
+            file.close ();
+            return (1);
+        }
+
+        datav = buf.substr (9, buf.length () - 9);    // get max data
+        cout << "max data: '" << datav << "' pos: " << pos << endl;
+        maxdata_new = std::stoll (datav);
+
+        // check if data base size is big enough to load new data base
+        if (maxdata_new  > size)
+        {
+            cout << "load_database: ERROR can't load new data base with: " << maxdata_new << " elements into space of: " << size << "!" << endl;
+            file.close ();
+            return (1);
+        }
+
+        while (read)
+        {
+            getline (file, buf);
+            if (! file.good ())
+            {
+                read = 0;
+                break;
+            }
+            if (i == maxdata_new)
+            {
+                cout << "load_database: ERROR data size to low to read data base!" << endl;
+                file.close ();
+                return (1);
+            }
+            pos = buf.find ("dataname: ");
+            if (pos != std::string::npos)
+            {
+                datav = buf.substr (10, buf.length () - 10);
+                data_name = datav;
+            }
+
+            pos = buf.find ("datatype: ");
+            if (pos != std::string::npos)
+            {
+                data_type = FREE;         // the read in data type of current data
+                datav = buf.substr (10, buf.length () - 10);
+                if (datav.compare ("BYTE") == 0)
+                {
+                    data_type = BYTE;
+                }
+                if (datav.compare ("STRING") == 0)
+                {
+                    data_type = STRING;
+                }
+                if (datav.compare ("INT64") == 0)
+                {
+                    data_type = QWORD;
+                }
+                if (datav.compare ("DOUBLE") == 0)
+                {
+                    data_type = DOUBLE;
+                }
+                if (data_type == FREE)
+                {
+                    // data not of legal type ERROR!
+                    cout << "load_database: ERROR: illegal data type: " << datav << endl;
+                    file.close ();
+                    return (1);
+                }
+            }
+
+            pos = buf.find ("datasize: ");
+            if (pos != std::string::npos)
+            {
+                datav = buf.substr (10, buf.length () - 9);
+                data_size = std::stoll (datav);
+                // data[i].size = data_size;
+            }
+
+            pos = buf.find ("data: ");
+            if (pos != std::string::npos)
+            {
+                datav = buf.substr (6, buf.length () - 6);
+
+                switch (data_type)
+                {
+                    case BYTE:
+                        if (data_mem->store_byte ((U1 *) data_name.c_str (), (U1 *) datav.c_str()) != 0)
+                        {
+                            cout << "load_database: ERROR store byte!" << endl;
+                            file.close ();
+                            return (1);
+                        }
+                        break;
+
+                    case STRING:
+                        if (data_mem->store_byte ((U1 *) data_name.c_str (), (U1 *) datav.c_str()) != 0)
+                        {
+                            cout << "load_database: ERROR store string!" << endl;
+                            file.close ();
+                            return (1);
+                        }
+                        break;
+
+                    case QWORD:
+                        if (data_mem->store_int64 ((U1 *) data_name.c_str (), std::stoll (datav)) != 0)
+                        {
+                            cout << "load_database: ERROR store int64!" << endl;
+                            file.close ();
+                            return (1);
+                        }
+                        break;
+
+                    case DOUBLE:
+                        if (data_mem->store_double ((U1 *) data_name.c_str (), std::stod (datav)) != 0)
+                        {
+                            cout << "load_database: ERROR store double!" << endl;
+                            file.close ();
+                            return (1);
+                        }
+                        break;
+                }
+                i++;        // data element counter
+            }
+
+            cout << buf << endl;
+        }
+        file.close ();
+        return (0);
+    }
+    else
+    {
+        // error file open
+        cout << "load_database: ERROR can't read data base file: " << filename << endl;
+        return (1);
+    }
+}
+
 // socket handling functions ==================================================
 void init_sockets (void)
 {
@@ -1036,6 +1369,8 @@ void *socket_conn_handler (void *socket_accept_v)
     U1 info_type_str[512];
 
     U1 run = 1;
+
+    U1 file_name[512];  // data base save/load filename
 
     while (run)
     {
@@ -1490,6 +1825,64 @@ void *socket_conn_handler (void *socket_accept_v)
             printf ("> LOGOUT: OK\n");
             continue;
         }
+
+        // save data base  ====================================================
+        if (strcmp (buffer, "SAVE") == 0)
+        {
+            // get string file name
+            if (socket_read_string (priv_sock, (U1 *) file_name, 512) != 0)
+            {
+                perror ("read command string: file name");
+                return ((void *) EXIT_FAILURE);
+            }
+            if (data_mem->save_database (file_name) == 0)
+            {
+                // send OK
+                if (socket_write_string (priv_sock, (U1 *) "OK") != 0)
+                {
+                    perror ("write command string: string");
+                    return ((void *) EXIT_FAILURE);
+                }
+            }
+            else
+            {
+                // ERROR
+                if (socket_write_string (priv_sock, (U1 *) "ERROR") != 0)
+                {
+                    perror ("write command string: string");
+                    return ((void *) EXIT_FAILURE);
+                }
+            }
+        }
+
+        // load data base =====================================================
+        if (strcmp (buffer, "LOAD") == 0)
+        {
+            // get string file name
+            if (socket_read_string (priv_sock, (U1 *) file_name, 512) != 0)
+            {
+                perror ("read command string: file name");
+                return ((void *) EXIT_FAILURE);
+            }
+            if (data_mem->load_database (file_name) == 0)
+            {
+                // send OK
+                if (socket_write_string (priv_sock, (U1 *) "OK") != 0)
+                {
+                    perror ("write command string: string");
+                    return ((void *) EXIT_FAILURE);
+                }
+            }
+            else
+            {
+                // ERROR
+                if (socket_write_string (priv_sock, (U1 *) "ERROR") != 0)
+                {
+                    perror ("write command string: string");
+                    return ((void *) EXIT_FAILURE);
+                }
+            }
+        }
     }
     free_socket (priv_sock);
     pthread_exit ((void *) 0);
@@ -1582,14 +1975,12 @@ void break_handler (void)
 
 int main (int ac, char *av[])
 {
-    S8 size = 200;
-    S8 port = 2020;
     S8 i;
 
     // call break_handler on ctrl + C
     signal (SIGINT, (__sighandler_t) break_handler);
 
-    cout << "l1vm-data 1.0.3 (C) 2021 Stefan Pietzonke" << endl;
+    cout << "l1vm-data 1.0.4 (C) 2021 Stefan Pietzonke" << endl;
     cout << "l1vm-data -s <size> -p <port>" << endl;
     cout << "open source version" << endl;
 

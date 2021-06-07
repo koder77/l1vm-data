@@ -1,4 +1,4 @@
-L1VM DATA - 2021-06-03
+L1VM DATA - 2021-06-07
 ======================
 
 This software is copyrighted by Stefan Pietzonke aka koder77 2021.
@@ -61,6 +61,9 @@ REMOVE DOUBLE
 
 GET INFO         get variable real name and data type
 LOGOUT           disconnect from server
+
+SAVE             save a data base
+LOAD             load a data base
 </pre>
 
 The GET/REMOVE commands also are working with "regular expressions":
@@ -131,5 +134,19 @@ OK
 
 So the "GET INFO" and "3n1-.*" was used as input to the database.
 And the following lines are the output.
+
+SAVE/LOAD
+========
+<pre>
+SAVE
+test.l1db
+OK
+
+LOAD
+test.l1db
+OK
+</pre>
+
+To save/load a data base you use two input line for the commands  as above!
 
 Have some fun!! :)

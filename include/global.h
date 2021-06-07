@@ -21,6 +21,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <cstring>
 #include <math.h>
 #include <cctype>
 #include <cstring>
