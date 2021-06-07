@@ -482,7 +482,18 @@ public:
 
     ~data_store ()
     {
-        delete data;
+        {
+            S8 i;
+            for (i = 0; i < maxdata; i++)
+            {
+                if (data[i].type == BYTE || data[i].type == STRING)
+                {
+                    delete data[i].mem.byte;
+                }
+            }
+
+            delete data;
+        }
     }
 };
 
