@@ -64,7 +64,8 @@
 #define ERR_FILE_EOF       -6
 #define ERR_FILE_FPOS      -7
 
-#define DATANAME 128
+#define DATANAME     256
+#define STRINGLEN    4096
 
 using namespace std;
 
@@ -471,6 +472,9 @@ public:
 
     S2 data_get_input_line (U1 *line, U1 *input, S2 type);
 
+    S8 find_data (U1 *data_find);                    // internal search function
+    S8 search_data (U1 *data_find, U1 *data_name);   // called by search data command
+
     data_store (S8 max_size, S8 port)
     {
         if (init_mem (max_size) != 0)
@@ -547,7 +551,7 @@ S2 data_store::store_byte (U1 *name, U1 *string)
     S8 ind;
     S8 size;
 
-    size = strlen_safe ((const char *) string, 512);
+    size = strlen_safe ((const char *) string, STRINGLEN);
 
 	// cout << "store_byte: name: " << name << " value: " << string << endl;
 	// cout << "value len: " << size << endl;
@@ -720,6 +724,85 @@ S8 data_store::find_element (U1 *name, S2 &type)
     return (-1);    // no element found!
 }
 
+S8 data_store::find_data (U1 *data_find)
+{
+    U1 *data_str[STRINGLEN];
+    S8 i;
+
+    regex pat ((char *) data_find);
+    // string valstr;
+    bool match;
+    string valstr;
+
+    for (i = 0; i < maxdata; i++)
+    {
+        if (data[i].type != FREE)
+        {
+            switch (data[i].type)
+            {
+                case BYTE:
+                    if (data[i].mem.byte[0] == data_find[0])
+                    {
+                        // found data match, return index of data
+                        return (i);
+                    }
+                    break;
+
+                case STRING:
+                    valstr.assign ((char *) data_find);
+                    match = regex_match (valstr, pat);
+                    if (match)
+                    {
+                        // found data match, return index of data
+                        return (i);
+                    }
+                    break;
+
+                case QWORD:
+                    sprintf ((char *) data_str, "%lli", data[i].mem.qword);
+                    valstr.assign ((char *) data_str);
+                    match = regex_match (valstr, pat);
+                    if (match)
+                    {
+                        // found data match, return index of data
+                        return (i);
+                    }
+                    break;
+
+                case DOUBLE:
+                    sprintf ((char *) data_str, "%10.10f", data[i].mem.dfloat);
+                    valstr.assign ((char *) data_str);
+                    match = regex_match (valstr, pat);
+                    if (match)
+                    {
+                        // found data match, return index of data
+                        return (i);
+                    }
+                    break;
+            }
+        }
+    }
+    return (-1);        // data not found
+}
+
+S8 data_store::search_data (U1 *data_find, U1 *data_name)
+{
+    S8 ind;
+
+    pthread_mutex_lock (&data_mutex);
+    ind = find_data (data_find);
+    if (ind > -1)
+    {
+        // found data index
+        strcpy ((char *) data_name, (const char *) data[ind].name);
+        pthread_mutex_unlock (&data_mutex);
+        return (ind);
+    }
+    strcpy ((char *) data_name, "");
+    pthread_mutex_unlock (&data_mutex);
+    return (-1);
+}
+
 S2 data_store::find_element_realname (U1 *name, S8 &type, U1 *realname)
 {
     S8 i;
@@ -850,6 +933,16 @@ extern "C" S2 get_int64_c (U1 *name, S8 value)
 extern "C" S2 get_double_c (U1 *name, F8 value)
 {
     return (data_mem->get_double (name, value));
+}
+
+extern "C" S8 find_data_c (U1 *data_find)
+{
+    return (data_mem->find_data (data_find));
+}
+
+extern "C" S8 search_data_c (U1 *data_find, U1 *data_name)
+{
+    return (data_mem->search_data (data_find, data_name));
 }
 
 // data remove ================================================================
@@ -1369,19 +1462,22 @@ void *socket_conn_handler (void *socket_accept_v)
 {
     S2 priv_sock = *(S2*) socket_accept_v;
 
-    char buffer[1024] = {0};
-    U1 var_name[512];
+    char buffer[STRINGLEN] = {0};
+    U1 var_name[DATANAME];
     S8 var = 0;
     F8 var_d = 0.0;
-    U1 var_str[512];
+    U1 var_str[STRINGLEN];
 
-    U1 info_var_name[512];
+    U1 info_var_name[DATANAME];
     S8 info_type;
-    U1 info_type_str[512];
+    U1 info_type_str[STRINGLEN];
 
     U1 run = 1;
 
-    U1 file_name[512];  // data base save/load filename
+    U1 file_name[STRINGLEN];  // data base save/load filename
+
+    U1 data_str[STRINGLEN];
+    U1 data_name[DATANAME];
 
     while (run)
     {
@@ -1400,7 +1496,7 @@ void *socket_conn_handler (void *socket_accept_v)
             return ((void *) EXIT_FAILURE);
         }
     */
-        if (socket_read_string (priv_sock, (U1 *) buffer, 1024) != 0)
+        if (socket_read_string (priv_sock, (U1 *) buffer, STRINGLEN) != 0)
         {
             perror ("read command string");
             printf ("read string ERROR!!\n");
@@ -1415,14 +1511,14 @@ void *socket_conn_handler (void *socket_accept_v)
             // cout << "STORE STRING" << endl;
 
             // get string name
-            if (socket_read_string (priv_sock, (U1 *) var_name, 512) != 0)
+            if (socket_read_string (priv_sock, (U1 *) var_name, DATANAME) != 0)
             {
                 perror ("read command string: string name");
                 return ((void *) EXIT_FAILURE);
             }
 
             // get string value
-            if (socket_read_string (priv_sock, (U1 *) var_str, 512) != 0)
+            if (socket_read_string (priv_sock, (U1 *) var_str, STRINGLEN) != 0)
             {
                 perror ("read command string: string value");
                 return ((void *) EXIT_FAILURE);
@@ -1457,14 +1553,14 @@ void *socket_conn_handler (void *socket_accept_v)
             // cout << "STORE INT64" << endl;
 
             // get string name
-            if (socket_read_string (priv_sock, (U1 *) var_name, 512) != 0)
+            if (socket_read_string (priv_sock, (U1 *) var_name, DATANAME) != 0)
             {
                 perror ("read command string: string name");
                 return ((void *) EXIT_FAILURE);
             }
 
             // get string value
-            if (socket_read_string (priv_sock, (U1 *) var_str, 512) != 0)
+            if (socket_read_string (priv_sock, (U1 *) var_str, STRINGLEN) != 0)
             {
                 perror ("read command string: string value");
                 return ((void *) EXIT_FAILURE);
@@ -1506,14 +1602,14 @@ void *socket_conn_handler (void *socket_accept_v)
             // cout << "STORE DOUBLE"  << endl;
 
             // get string name
-            if (socket_read_string (priv_sock, (U1 *) var_name, 512) != 0)
+            if (socket_read_string (priv_sock, (U1 *) var_name, DATANAME) != 0)
             {
                 perror ("read command string: string name");
                 return ((void *) EXIT_FAILURE);
             }
 
             // get string value
-            if (socket_read_string (priv_sock, (U1 *) var_str, 512) != 0)
+            if (socket_read_string (priv_sock, (U1 *) var_str, STRINGLEN) != 0)
             {
                 perror ("read command string: string value");
                 return ((void *) EXIT_FAILURE);
@@ -1547,7 +1643,7 @@ void *socket_conn_handler (void *socket_accept_v)
         if (strcmp (buffer, "GET STRING") == 0 || strcmp (buffer, "GET BYTE") == 0)
         {
             // get string name
-            if (socket_read_string (priv_sock, (U1 *) var_name, 512) != 0)
+            if (socket_read_string (priv_sock, (U1 *) var_name, DATANAME) != 0)
             {
                 perror ("read command string: string name");
                 return ((void *) EXIT_FAILURE);
@@ -1582,7 +1678,7 @@ void *socket_conn_handler (void *socket_accept_v)
         if (strcmp (buffer, "GET INT64") == 0)
         {
             // get string name
-            if (socket_read_string (priv_sock, (U1 *) var_name, 512) != 0)
+            if (socket_read_string (priv_sock, (U1 *) var_name, DATANAME) != 0)
             {
                 perror ("read command string: string name");
                 return ((void *) EXIT_FAILURE);
@@ -1619,7 +1715,7 @@ void *socket_conn_handler (void *socket_accept_v)
         if (strcmp (buffer, "GET DOUBLE") == 0)
         {
             // get string name
-            if (socket_read_string (priv_sock, (U1 *) var_name, 512) != 0)
+            if (socket_read_string (priv_sock, (U1 *) var_name, DATANAME) != 0)
             {
                 perror ("read command string: string name");
                 return ((void *) EXIT_FAILURE);
@@ -1657,7 +1753,7 @@ void *socket_conn_handler (void *socket_accept_v)
         if (strcmp (buffer, "REMOVE STRING") == 0 || strcmp (buffer, "REMOVE BYTE") == 0)
         {
             // get string name
-            if (socket_read_string (priv_sock, (U1 *) var_name, 512) != 0)
+            if (socket_read_string (priv_sock, (U1 *) var_name, DATANAME) != 0)
             {
                 perror ("read command string: string name");
                 return ((void *) EXIT_FAILURE);
@@ -1692,7 +1788,7 @@ void *socket_conn_handler (void *socket_accept_v)
         if (strcmp (buffer, "REMOVE INT64") == 0)
         {
             // get string name
-            if (socket_read_string (priv_sock, (U1 *) var_name, 512) != 0)
+            if (socket_read_string (priv_sock, (U1 *) var_name, DATANAME) != 0)
             {
                 perror ("read command string: string name");
                 return ((void *) EXIT_FAILURE);
@@ -1732,7 +1828,7 @@ void *socket_conn_handler (void *socket_accept_v)
         if (strcmp (buffer, "REMOVE DOUBLE") == 0)
         {
             // get string name
-            if (socket_read_string (priv_sock, (U1 *) var_name, 512) != 0)
+            if (socket_read_string (priv_sock, (U1 *) var_name, DATANAME) != 0)
             {
                 perror ("read command string: string name");
                 return ((void *) EXIT_FAILURE);
@@ -1770,7 +1866,7 @@ void *socket_conn_handler (void *socket_accept_v)
         if (strcmp (buffer, "GET INFO") == 0)
         {
             // get string name
-            if (socket_read_string (priv_sock, (U1 *) var_name, 512) != 0)
+            if (socket_read_string (priv_sock, (U1 *) var_name, DATANAME) != 0)
             {
                 perror ("read command string: string name");
                 return ((void *) EXIT_FAILURE);
@@ -1829,6 +1925,47 @@ void *socket_conn_handler (void *socket_accept_v)
             continue;
         }
 
+        // search for data
+        // ====================================================================
+        if (strcmp (buffer, "SEARCH DATA") == 0)
+        {
+            // get data string
+            if (socket_read_string (priv_sock, (U1 *) data_str, STRINGLEN) != 0)
+            {
+                perror ("read command string: string data");
+                return ((void *) EXIT_FAILURE);
+            }
+
+            if (data_mem->search_data (data_str, data_name) > -1)
+            {
+                // found data, send name
+                if (socket_write_string (priv_sock, (U1 *) data_name) != 0)
+                {
+                    perror ("write command string: string");
+                    return ((void *) EXIT_FAILURE);
+                }
+
+                // send OK
+                if (socket_write_string (priv_sock, (U1 *) "OK") != 0)
+                {
+                    perror ("write command string: string");
+                    return ((void *) EXIT_FAILURE);
+                }
+            }
+            else
+            {
+                // data not found!
+                // ERROR
+                if (socket_write_string (priv_sock, (U1 *) "ERROR") != 0)
+                {
+                    perror ("write command string: string");
+                    return ((void *) EXIT_FAILURE);
+                }
+            }
+            strcpy (buffer, "");    // empty buffer
+            continue;
+        }
+
         // check commands
         if (strcmp (buffer, "LOGOUT") == 0)
         {
@@ -1841,7 +1978,7 @@ void *socket_conn_handler (void *socket_accept_v)
         if (strcmp (buffer, "SAVE") == 0)
         {
             // get string file name
-            if (socket_read_string (priv_sock, (U1 *) file_name, 512) != 0)
+            if (socket_read_string (priv_sock, (U1 *) file_name, DATANAME) != 0)
             {
                 perror ("read command string: file name");
                 return ((void *) EXIT_FAILURE);
@@ -1870,7 +2007,7 @@ void *socket_conn_handler (void *socket_accept_v)
         if (strcmp (buffer, "LOAD") == 0)
         {
             // get string file name
-            if (socket_read_string (priv_sock, (U1 *) file_name, 512) != 0)
+            if (socket_read_string (priv_sock, (U1 *) file_name, DATANAME) != 0)
             {
                 perror ("read command string: file name");
                 return ((void *) EXIT_FAILURE);

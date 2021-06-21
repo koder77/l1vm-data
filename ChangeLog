@@ -1,7 +1,8 @@
 L1VM data - 1.0.4
 New commands: "SAVE" and "LOAD" to store and read database.
+New command: "SEARCH DATA" see README.md!
 
--- Stefan Pietzonke <jay-t@gmx.net> Sun Jun 06 2021 12:40 +0200
+-- Stefan Pietzonke <jay-t@gmx.net> Mon Jun 21 2021 21:35 +0200
 
 L1VM data - 1.0.3
 Initial commit.

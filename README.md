@@ -59,6 +59,8 @@ REMOVE STRING
 REMOVE INT64
 REMOVE DOUBLE
 
+SEARCH DATA      search in database for data
+
 GET INFO         get variable real name and data type
 LOGOUT           disconnect from server
 
@@ -134,6 +136,34 @@ OK
 
 So the "GET INFO" and "3n1-.*" was used as input to the database.
 And the following lines are the output.
+
+SEARCH DATA
+===========
+The data base can be searched for a data match.
+If the searched data is in the data base then the name of the data
+entry will be returned.
+The following example creates two data sets: an INT64 and an STRING type:
+
+<pre>
+$ nc localhost 2020
+STORE INT64
+foo
+123456
+OK
+STORE STRING
+hello
+Hello world!
+OK
+SEARCH DATA
+world
+hello
+OK
+SEARCH DATA
+123456
+foo
+OK
+</pre>
+
 
 SAVE/LOAD
 ========
