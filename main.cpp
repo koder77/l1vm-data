@@ -749,7 +749,7 @@ S8 data_store::find_data (U1 *data_find)
                     break;
 
                 case STRING:
-                    valstr.assign ((char *) data_find);
+                    valstr.assign ((char *) data[i].mem.byte);
                     match = regex_match (valstr, pat);
                     if (match)
                     {
