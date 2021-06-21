@@ -1,4 +1,4 @@
-L1VM DATA - 2021-06-07
+L1VM DATA - 2021-06-21
 ======================
 
 This software is copyrighted by Stefan Pietzonke aka koder77 2021.
@@ -142,7 +142,7 @@ SEARCH DATA
 The data base can be searched for a data match.
 If the searched data is in the data base then the name of the data
 entry will be returned.
-The following example creates two data sets: an INT64 and an STRING type:
+The following example creates two data sets: an INT64 and a STRING type:
 
 <pre>
 $ nc localhost 2020
