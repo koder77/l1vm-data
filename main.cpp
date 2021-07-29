@@ -2089,6 +2089,7 @@ S2 open_server (S8 port)
             if (pthread_create  (&thread_id[curr_sock], NULL, socket_conn_handler , (void*) &curr_sock) < 0)
             {
                 perror("could not create thread");
+                pthread_mutex_unlock (&data_mutex);
                 return (1);
             }
             pthread_mutex_unlock (&data_mutex);
@@ -2128,7 +2129,7 @@ int main (int ac, char *av[])
     // call break_handler on ctrl + C
     signal (SIGINT, (__sighandler_t) break_handler);
 
-    cout << "l1vm-data 1.0.4 (C) 2021 Stefan Pietzonke" << endl;
+    cout << "l1vm-data 1.0.5 (C) 2021 Stefan Pietzonke" << endl;
     cout << "l1vm-data -s <size> -p <port>" << endl;
     cout << "open source version" << endl;
 

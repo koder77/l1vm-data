@@ -1,3 +1,8 @@
+L1VM data - 1.0.5
+BUGFIX: open_server(): added missing pthreads mutex unlock on error!
+
+-- Stefan Pietzonke <jay-t@gmx.net> Thu Jul 29 2021 20:42 +0200
+
 L1VM data - 1.0.4
 New commands: "SAVE" and "LOAD" to store and read database.
 New command: "SEARCH DATA" see README.md!
