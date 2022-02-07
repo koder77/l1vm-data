@@ -2180,7 +2180,6 @@ S2 load_config (U1 *filename)
     U1 read = 1;
     FILE *file_handle;
     char buf[INET_ADDRSTRLEN];
-    S8 str_len;
 
     file_handle = fopen ((const char *) filename, "r");
     if (file_handle == NULL)
