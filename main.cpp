@@ -92,6 +92,12 @@ size_t strlen_safe (const char * str, int maxlen);
 S8 size = 200;
 S8 port = 2020;
 
+// legal client ip addresses
+#define MAX_CLIENT_IP_ADDRESSES 256
+
+char clientipaddress_str[MAX_CLIENT_IP_ADDRESSES][INET_ADDRSTRLEN];
+S8 max_clientipaddresses = 0;
+
 //byte order =================================================================
 // helper functions endianess
 
@@ -1976,6 +1982,22 @@ void *socket_conn_handler (void *socket_accept_v)
     pthread_exit ((void *) 0);
 }
 
+S2 check_client_ip_address (U1 *address_str)
+{
+    S8 ind;
+
+    for (ind = 0; ind <= max_clientipaddresses; ind++)
+    {
+        if (strcmp ((const char *) address_str, clientipaddress_str[ind]) == 0)
+        {
+            // found client IP address in whitelist
+            // return OK!
+            return (0);
+        }
+    }
+    return (1);     // client address not in whitelist, return error code!!
+}
+
 S2 open_server (S8 port)
 {
 	int server_fd, new_socket;
@@ -1985,6 +2007,9 @@ S2 open_server (S8 port)
     S2 curr_sock = -1;
 
     pthread_t thread_id[MAXSOCKETSCONN];
+
+    // client socket address
+    char clientaddr_str[INET_ADDRSTRLEN];
 
     // set all sockets as free
     init_sockets ();
@@ -2021,18 +2046,31 @@ S2 open_server (S8 port)
 
     while ((new_socket = accept (server_fd, (struct sockaddr *) &address, (socklen_t*) &addrlen)))
     {
-        curr_sock = get_free_socket ();
-        if (curr_sock > -1)
+        struct sockaddr_in pV4Addr = (struct sockaddr_in) address;
+        struct in_addr ipAddr = pV4Addr.sin_addr;
+        inet_ntop( AF_INET, &ipAddr, clientaddr_str, INET_ADDRSTRLEN );
+
+        cout << "got connection from address: " << clientaddr_str << " : ";
+        if (check_client_ip_address ((U1 *) clientaddr_str) != 0)
         {
-            pthread_mutex_lock (&data_mutex);
-            sockets[curr_sock].serv_conn = new_socket;
-            if (pthread_create  (&thread_id[curr_sock], NULL, socket_conn_handler , (void*) &curr_sock) < 0)
+            cout << " access denied!" << endl;
+        }
+        else
+        {
+            cout << " access allowed!" << endl;
+            curr_sock = get_free_socket ();
+            if (curr_sock > -1)
             {
-                perror("could not create thread");
+                pthread_mutex_lock (&data_mutex);
+                sockets[curr_sock].serv_conn = new_socket;
+                if (pthread_create  (&thread_id[curr_sock], NULL, socket_conn_handler , (void*) &curr_sock) < 0)
+                {
+                    perror("could not create thread");
+                    pthread_mutex_unlock (&data_mutex);
+                    return (1);
+                }
                 pthread_mutex_unlock (&data_mutex);
-                return (1);
             }
-            pthread_mutex_unlock (&data_mutex);
         }
     }
     return (0);
@@ -2060,6 +2098,121 @@ void break_handler (void)
         cout << "freed data store!" << endl;
 		exit (0);
 	}
+}
+
+char *fgets_uni (char *str, int len, FILE *fptr)
+{
+    int ch, nextch;
+    int i = 0, eol = FALSE;
+    char *ret;
+
+    ch = fgetc (fptr);
+    if (feof (fptr))
+    {
+        return (NULL);
+    }
+    while (! feof (fptr) || i == len - 2)
+    {
+        switch (ch)
+        {
+            case '\r':
+                /* check for '\r\n\' */
+
+                nextch = fgetc (fptr);
+                if (! feof (fptr))
+                {
+                    if (nextch != '\n')
+                    {
+                        ungetc (nextch, fptr);
+                    }
+                }
+                str[i] = '\n';
+                i++; eol = TRUE;
+                break;
+
+            case '\n':
+                /* check for '\n\r\' */
+
+                nextch = fgetc (fptr);
+                if (! feof (fptr))
+                {
+                    if (nextch != '\r')
+                    {
+                        ungetc (nextch, fptr);
+                    }
+                }
+                str[i] = '\n';
+                i++; eol = TRUE;
+                break;
+
+            default:
+				str[i] = ch;
+				i++;
+                
+                break;
+        }
+
+        if (eol)
+        {
+            break;
+        }
+
+        ch = fgetc (fptr);
+    }
+
+    if (feof (fptr))
+    {
+        str[i] = '\0';
+    }
+    else
+    {
+        str[i] = '\0';
+    }
+
+    ret = str;
+    return (ret);
+}
+
+// load config file with legal ip addresses
+int load_config (U1 *filename)
+{
+    S8 ind = 0;
+    U1 read = 1;
+    FILE *file_handle;
+    char buf[INET_ADDRSTRLEN];
+
+    file_handle = fopen ((const char *) filename, "r");
+    if (file_handle == NULL)
+    {
+        cout << "ERROR: can't open config file: " << filename << endl;
+        return (1);
+    }
+    while (read)
+    {
+        if (fgets_uni (buf, INET_ADDRSTRLEN, file_handle) != NULL)
+        {
+            strcpy (clientipaddress_str[ind], buf);
+            cout << "allow client IP address: '" << buf << "'" << endl;
+            if (ind < MAX_CLIENT_IP_ADDRESSES - 1)
+            {
+                ind++;
+            }
+            else 
+            {
+                read = 0;
+            }
+        }
+        else
+        {
+            // EOF
+            max_clientipaddresses = ind;
+            fclose (file_handle);
+            return (0);
+        }
+    }
+    max_clientipaddresses = ind;
+    fclose (file_handle);
+    return (0);
 }
 
 int main (int ac, char *av[])
@@ -2100,6 +2253,12 @@ int main (int ac, char *av[])
                 }
             }
         }
+    }
+
+    if (load_config ((U1 *) "config.txt") != 0)
+    {
+        cout << "ERROR can't load config file! Can't set allowed client IP addresses!" << endl;
+        exit (1);
     }
 
     // data_store* data_mem = new data_store (size);

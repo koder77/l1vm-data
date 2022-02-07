@@ -1,7 +1,11 @@
 L1VM DATA - 2021-06-21
 ======================
 
-This software is copyrighted by Stefan Pietzonke aka koder77 2021.
+This software is copyrighted by Stefan Pietzonke aka koder77 2022.
+
+NEW: file "config.txt" contains a whitelist of IP addresses, which are allowed to connect
+to the server. Add one IP address per line. And don't put a new line after the last entry!
+This makes the data base a bit more safe!
 
 L1vm-data is a simple database for sharing data stored in the l1vm-data server.
 Worker programs can access this data and share it as global memory.
