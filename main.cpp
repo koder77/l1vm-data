@@ -2174,12 +2174,13 @@ char *fgets_uni (char *str, int len, FILE *fptr)
 }
 
 // load config file with legal ip addresses
-int load_config (U1 *filename)
+S2 load_config (U1 *filename)
 {
     S8 ind = 0;
     U1 read = 1;
     FILE *file_handle;
     char buf[INET_ADDRSTRLEN];
+    S8 str_len;
 
     file_handle = fopen ((const char *) filename, "r");
     if (file_handle == NULL)
