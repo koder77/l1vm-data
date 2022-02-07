@@ -678,23 +678,6 @@ S2 data_store::store_double (U1 *name, F8 value)
     }
 }
 
-// wrapper for C ==============================================================
-
-extern "C" S2 store_byte_c (U1 *name, U1 *string)
-{
-    return (data_mem->store_byte (name, string));
-}
-
-extern "C" S2 store_int64_c (U1 *name, S8 value)
-{
-    return (data_mem->store_int64 (name, value));
-}
-
-extern "C" S2 store_double_c (U1 *name, F8 value)
-{
-    return (data_mem->store_double (name, value));
-}
-
 // data get ===================================================================
 
 S8 data_store::find_element (U1 *name, S2 &type)
@@ -918,32 +901,6 @@ S2 data_store::get_double (U1 *name, F8 &value)
     }
 }
 
-// wrapper for C ==============================================================
-
-extern "C" S2 get_byte_c (U1 *name, U1 *string)
-{
-    return (data_mem->get_byte (name, string));
-}
-
-extern "C" S2 get_int64_c (U1 *name, S8 value)
-{
-    return (data_mem->get_int64 (name, value));
-}
-
-extern "C" S2 get_double_c (U1 *name, F8 value)
-{
-    return (data_mem->get_double (name, value));
-}
-
-extern "C" S8 find_data_c (U1 *data_find)
-{
-    return (data_mem->find_data (data_find));
-}
-
-extern "C" S8 search_data_c (U1 *data_find, U1 *data_name)
-{
-    return (data_mem->search_data (data_find, data_name));
-}
 
 // data remove ================================================================
 
@@ -1058,23 +1015,6 @@ S2 data_store::data_get_info (U1 *name, U1 *realname, S8 &type)
     }
 }
 
-
-// wrapper for C ==============================================================
-
-extern "C" S2 remove_byte_c (U1 *name, U1 *string)
-{
-    return (data_mem->remove_byte (name, string));
-}
-
-extern "C" S2 remove_int64_c (U1 *name, S8 value)
-{
-    return (data_mem->remove_int64 (name, value));
-}
-
-extern "C" S2 remove_double_c (U1 *name, F8 value)
-{
-    return (data_mem->remove_double (name, value));
-}
 
 // remove all data ============================================================
 
@@ -2129,7 +2069,7 @@ int main (int ac, char *av[])
     // call break_handler on ctrl + C
     signal (SIGINT, (__sighandler_t) break_handler);
 
-    cout << "l1vm-data 1.0.5 (C) 2021 Stefan Pietzonke" << endl;
+    cout << "l1vm-data 1.0.6 (C) 2021 Stefan Pietzonke" << endl;
     cout << "l1vm-data -s <size> -p <port>" << endl;
     cout << "open source version" << endl;
 

@@ -1,3 +1,8 @@
+L1VM data - 1.0.6
+    Removed extern "C" code parts, as they are not needed.
+
+-- Stefan Pietzonke <jay-t@gmx.net> Mon Feb 07 2022 20:42 +0100
+
 L1VM data - 1.0.5
 BUGFIX: open_server(): added missing pthreads mutex unlock on error!
 
