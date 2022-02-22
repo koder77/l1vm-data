@@ -478,8 +478,17 @@ public:
 
     S2 data_get_input_line (U1 *line, U1 *input, S2 type);
 
-    S8 find_data (U1 *data_find);                    // internal search function
-    S8 search_data (U1 *data_find, U1 *data_name);   // called by search data command
+    S8 find_data (U1 *data_find, S8 start_index);                                       // internal search function
+    S8 search_data (U1 *data_find, U1 *data_name);                                      // called by search data command
+    S8 search_data_list (U1 *data_find, U1 *data_name, S8 start_index);                 // used by "search data list" has start index variable
+    S8 search_name_list (U1 *data_find, U1 *data_name, S8 start_index);
+
+    S8 find_element_index (U1 *name, S8 start_index);
+    S8 get_maxdata (void);
+    S2 get_data_name_value (S8 index, U1 *data_name, U1 *value);
+    S8 find_element_list (U1 *name, S8 start_index);
+    S8 search_element_list (U1 *data_search_name, U1 *data_name, S8 start_index);
+
 
     data_store (S8 max_size, S8 port)
     {
@@ -509,6 +518,44 @@ public:
 
 // declare global pointer
 data_store* data_mem;
+
+S8 data_store::get_maxdata (void)
+{
+    return (maxdata);
+}
+
+S2 data_store::get_data_name_value (S8 index, U1 *data_name, U1 *value)
+{
+    if (index < 0 || index >= maxdata)
+    {
+        // index overflow, return error code
+        return (1);
+    }
+
+    // copy name
+    strcpy ((char *) data_name, (const char *) data[index].name);
+
+    // copy value
+    switch (data[index].type)
+    {
+        case BYTE:
+            value = data[index].mem.byte;
+            break;
+
+        case STRING:
+            strcpy ((char *) value, (const char *) data[index].mem.byte);
+            break;
+
+        case QWORD:
+            sprintf ((char *) value, "%lli", data[index].mem.qword);
+            break;
+
+        case DOUBLE:
+            sprintf ((char *) value, "%10.10f", data[index].mem.dfloat);
+            break;
+    }
+    return (0);
+}
 
 S2 data_store::init_mem (S8 size)
 {
@@ -713,7 +760,33 @@ S8 data_store::find_element (U1 *name, S2 &type)
     return (-1);    // no element found!
 }
 
-S8 data_store::find_data (U1 *data_find)
+S8 data_store::find_element_index (U1 *name, S8 start_index)
+{
+    S8 i;
+
+    regex pat ((char *) name);
+	// string valstr;
+	bool match;
+
+    for (i = start_index; i < maxdata; i++)
+    {
+        if (data[i].type != FREE)
+        {
+			// cout << "find_element: " << i << " type: " << data[i].type << endl;
+
+			string valstr((char *) data[i].name);
+			match = regex_match (valstr, pat);
+			if (match)
+			{
+				return (i);
+			}
+        }
+    }
+    return (-1);    // no element found!
+}
+
+
+S8 data_store::find_data (U1 *data_find, S8 start_index)
 {
     U1 *data_str[STRINGLEN];
     S8 i;
@@ -723,7 +796,7 @@ S8 data_store::find_data (U1 *data_find)
     bool match;
     string valstr;
 
-    for (i = 0; i < maxdata; i++)
+    for (i = start_index; i < maxdata; i++)
     {
         if (data[i].type != FREE)
         {
@@ -774,12 +847,74 @@ S8 data_store::find_data (U1 *data_find)
     return (-1);        // data not found
 }
 
+S8 data_store::find_element_list (U1 *name, S8 start_index)
+{
+    S8 i;
+
+    regex pat ((char *) name);
+    // string valstr;
+    bool match;
+    string valstr;
+
+    for (i = start_index; i < maxdata; i++)
+    {
+        if (data[i].type != FREE)
+        {
+            string valstr((char *) data[i].name);
+			match = regex_match (valstr, pat);
+			if (match)
+			{
+				// found a name match, return type
+                strcpy ((char *) name, (const char *) data[i].name);
+				return (i);
+			}
+        }
+    }
+    return (-1);        // no element found!
+}
+
 S8 data_store::search_data (U1 *data_find, U1 *data_name)
 {
     S8 ind;
 
     pthread_mutex_lock (&data_mutex);
-    ind = find_data (data_find);
+    ind = find_data (data_find, 0);
+    if (ind > -1)
+    {
+        // found data index
+        strcpy ((char *) data_name, (const char *) data[ind].name);
+        pthread_mutex_unlock (&data_mutex);
+        return (ind);
+    }
+    strcpy ((char *) data_name, "");
+    pthread_mutex_unlock (&data_mutex);
+    return (-1);
+}
+
+S8 data_store::search_data_list (U1 *data_find, U1 *data_name, S8 start_index)
+{
+    S8 ind;
+
+    pthread_mutex_lock (&data_mutex);
+    ind = find_data (data_find, start_index);
+    if (ind > -1)
+    {
+        // found data index
+        strcpy ((char *) data_name, (const char *) data[ind].name);
+        pthread_mutex_unlock (&data_mutex);
+        return (ind);
+    }
+    strcpy ((char *) data_name, "");
+    pthread_mutex_unlock (&data_mutex);
+    return (-1);
+}
+
+S8 data_store::search_element_list (U1 *data_search_name, U1 *data_name, S8 start_index)
+{
+    S8 ind;
+
+    pthread_mutex_lock (&data_mutex);
+    ind = find_element_list (data_search_name, start_index);
     if (ind > -1)
     {
         // found data index
@@ -819,7 +954,6 @@ S2 data_store::find_element_realname (U1 *name, S8 &type, U1 *realname)
     }
     return (-1);    // no element found!
 }
-
 
 S2 data_store::get_byte (U1 *name, U1 *value)
 {
@@ -906,6 +1040,8 @@ S2 data_store::get_double (U1 *name, F8 &value)
         return (1); // error
     }
 }
+
+
 
 
 // data remove ================================================================
@@ -1911,6 +2047,221 @@ void *socket_conn_handler (void *socket_accept_v)
             strcpy (buffer, "");    // empty buffer
             continue;
         }
+
+        // search for data and return list of entries
+        // ====================================================================
+        if (strcmp (buffer, "SEARCH DATA LIST") == 0)
+        {
+            {
+                S8 entries = 0;
+                S8 start_index = 0;
+                U1 search_loop = 1;
+                U1 sendbuf[STRINGLEN];
+                U1 lengthstr[STRINGLEN];
+                S8 maxdata;
+                U1 data_name[STRINGLEN];
+                U1 value[STRINGLEN];
+
+                maxdata = data_mem->get_maxdata ();
+
+                // get data string
+                if (socket_read_string (priv_sock, (U1 *) data_str, STRINGLEN) != 0)
+                {
+                    perror ("read command string: string data");
+                    return ((void *) EXIT_FAILURE);
+                }
+
+                // find out the number of data entries matching 
+                while (search_loop == 1)
+                {
+                    start_index = data_mem->search_data_list (data_str, data_name, start_index);
+                    if (start_index > -1)
+                    {
+                        entries++;
+                        if (start_index < maxdata - 1)
+                        {
+                            start_index++;
+                        }
+                        else
+                        {
+                            search_loop = 0;
+                        }
+                    }
+                    else 
+                    {
+                        // no more entry found, exit loop
+                        search_loop = 0;
+                    }
+                }
+
+                strcpy ((char *) sendbuf, "data list length = ");
+                sprintf ((char *) lengthstr, "%lli", entries);
+                strcat ((char *) sendbuf, (const char *) lengthstr);
+
+                // send length string
+                if (socket_write_string (priv_sock, (U1 *) sendbuf) != 0)
+                {
+                    perror ("write command string: string");
+                    return ((void *) EXIT_FAILURE);
+                }
+
+                // send the found data list
+                search_loop = 1;
+                start_index = 0;
+                while (search_loop == 1)
+                {
+                    start_index = data_mem->search_data_list (data_str, data_name, start_index);
+                    if (start_index > -1)
+                    {
+                        // cout << "found element: " << start_index << endl;
+
+                        if (data_mem->get_data_name_value (start_index, data_name, value) == 0)
+                        {
+                            // got data sending it
+
+                            strcpy ((char *) sendbuf, (const char *) data_name);
+                            strcat ((char *) sendbuf, " = ");
+                            strcat ((char *) sendbuf, (const char *) value);
+
+                            if (socket_write_string (priv_sock, (U1 *) sendbuf) != 0)
+                            {
+                                perror ("write command string: string");
+                                return ((void *) EXIT_FAILURE);
+                            }
+                        }
+
+                        if (start_index < maxdata - 1)
+                        {
+                            start_index++;
+                        }
+                        else
+                        {
+                            search_loop = 0;
+                        }
+                    }
+                    else 
+                    {
+                        // no more entry found, exit loop
+                        search_loop = 0;
+
+                        // send two newlines to mark data end
+                        if (socket_write_string (priv_sock, (U1 *) "OK") != 0)
+                        {
+                            perror ("write command string: string");
+                            return ((void *) EXIT_FAILURE);
+                        }
+                    }
+                }
+            }
+        }
+
+        // search for data and return list of entries
+        // ====================================================================
+        if (strcmp (buffer, "SEARCH NAME LIST") == 0)
+        {
+            {
+                S8 entries = 0;
+                S8 start_index = 0;
+                U1 search_loop = 1;
+                U1 sendbuf[STRINGLEN];
+                U1 lengthstr[STRINGLEN];
+                S8 maxdata;
+                U1 data_name[STRINGLEN];
+                U1 value[STRINGLEN];
+
+                maxdata = data_mem->get_maxdata ();
+
+                // get data string
+                if (socket_read_string (priv_sock, (U1 *) data_str, STRINGLEN) != 0)
+                {
+                    perror ("read command string: string data");
+                    return ((void *) EXIT_FAILURE);
+                }
+
+                // find out the number of data entries matching 
+                while (search_loop == 1)
+                {
+                    start_index = data_mem->search_element_list (data_str, data_name, start_index);
+                    if (start_index > -1)
+                    {
+                        entries++;
+                        if (start_index < maxdata - 1)
+                        {
+                            start_index++;
+                        }
+                        else
+                        {
+                            search_loop = 0;
+                        }
+                    }
+                    else 
+                    {
+                        // no more entry found, exit loop
+                        search_loop = 0;
+                    }
+                }
+
+                strcpy ((char *) sendbuf, "data list length = ");
+                sprintf ((char *) lengthstr, "%lli", entries);
+                strcat ((char *) sendbuf, (const char *) lengthstr);
+
+                // send length string
+                if (socket_write_string (priv_sock, (U1 *) sendbuf) != 0)
+                {
+                    perror ("write command string: string");
+                    return ((void *) EXIT_FAILURE);
+                }
+
+                // send the found data list
+                search_loop = 1;
+                start_index = 0;
+                while (search_loop == 1)
+                {
+                    start_index = data_mem->search_element_list (data_str, data_name, start_index);
+                    if (start_index > -1)
+                    {
+                        // cout << "found element: " << start_index << endl;
+
+                        if (data_mem->get_data_name_value (start_index, data_name, value) == 0)
+                        {
+                            // got data sending it
+
+                            strcpy ((char *) sendbuf, (const char *) data_name);
+                            strcat ((char *) sendbuf, " = ");
+                            strcat ((char *) sendbuf, (const char *) value);
+
+                            if (socket_write_string (priv_sock, (U1 *) sendbuf) != 0)
+                            {
+                                perror ("write command string: string");
+                                return ((void *) EXIT_FAILURE);
+                            }
+                        }
+
+                        if (start_index < maxdata - 1)
+                        {
+                            start_index++;
+                        }
+                        else
+                        {
+                            search_loop = 0;
+                        }
+                    }
+                    else 
+                    {
+                        // no more entry found, exit loop
+                        search_loop = 0;
+
+                        // send two newlines to mark data end
+                        if (socket_write_string (priv_sock, (U1 *) "OK") != 0)
+                        {
+                            perror ("write command string: string");
+                            return ((void *) EXIT_FAILURE);
+                        }
+                    }
+                }
+            }
+        }
+
 
         // check commands
         if (strcmp (buffer, "LOGOUT") == 0)

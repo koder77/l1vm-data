@@ -3,6 +3,35 @@ L1VM DATA - 2022-02-07
 
 This software is copyrighted by Stefan Pietzonke aka koder77 2022.
 
+NEW: "SEARCH DATA LIST" and "SEARCH NAME LIST" to get a list of entries:
+
+```
+$ nc 127.0.0.1 2020
+STORE INT64
+foo
+12345
+OK
+STORE INT64
+bar
+6789
+OK
+STORE INT64
+foobar
+12345
+OK
+SEARCH DATA LIST
+12345
+data list length = 2
+foo = 12345
+foobar = 12345
+OK
+SEARCH NAME LIST
+foobar
+data list length = 1
+foobar = 12345
+OK
+```
+
 NEW: file "config.txt" contains a whitelist of IP addresses, which are allowed to connect
 to the server. Add one IP address per line. And don't put a new line after the last entry!
 This makes the data base a bit more safe!
@@ -64,6 +93,8 @@ REMOVE INT64
 REMOVE DOUBLE
 
 SEARCH DATA      search in database for data
+SEARCH DATA LIST return a list of matching data
+SEARCH NAME LIST return a list of matching names
 
 GET INFO         get variable real name and data type
 LOGOUT           disconnect from server
